@@ -1,0 +1,4 @@
+id: githubmcp
+runtime: docker
+base: .
+entry: Dockerfile
