@@ -2,15 +2,15 @@
 FROM golang:1.24 AS build
 WORKDIR /src
 
-# Copy local workspace if present (small context). If there's no go.mod, clone upstream.
+# Clone upstream first into an initially-empty directory so git never tries to write into an already-populated path.
+# Then copy local workspace on top to allow local overrides (if present).
+RUN git clone --depth 1 https://github.com/github/github-mcp-server /src || true
+
+# Copy local workspace to overwrite upstream files when present.
 COPY . /src
 
+# If go.mod exists (either local or from upstream), download modules and build.
 RUN if [ -f go.mod ]; then \
-      echo "Using local workspace"; \
-      go env -w GO111MODULE=on && go mod download; \
-    else \
-      echo "No go.mod found in context — cloning upstream repo"; \
-      git clone --depth 1 https://github.com/github/github-mcp-server .; \
       go env -w GO111MODULE=on && go mod download; \
     fi \
  && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/github-mcp-server ./cmd/github-mcp-server
