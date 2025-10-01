@@ -2,13 +2,17 @@
 FROM golang:1.24 AS build
 WORKDIR /src
 
-# Use local workspace as build context rather than cloning upstream (avoids go version mismatch).
+# Copy module files first so Docker cache can reuse downloads.
+COPY go.mod go.sum ./
+
+RUN go env -w GO111MODULE=on \
+ && go mod download
+
+# Now copy the rest of the source
 COPY . .
 
 # Ensure modules, produce a static linux binary
-RUN go env -w GO111MODULE=on \
- && go mod download \
- && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/github-mcp-server ./cmd/github-mcp-server
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/github-mcp-server ./cmd/github-mcp-server
 
 # --- minimal runtime with mcp-proxy exposing Streamable HTTP/SSE ---
 FROM python:3.12-slim
