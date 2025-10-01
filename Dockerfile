@@ -15,9 +15,7 @@ COPY --from=build /out/github-mcp-server /usr/local/bin/github-mcp-server
 
 # Health + basics
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD python - <<'PY' || exit 1
-import urllib.request; urllib.request.urlopen("http://127.0.0.1:8080").read()
-PY
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080', timeout=2).read()"
 
 # Start proxy on 0.0.0.0:8080 and spawn stdio server behind it
 # Pass through env for the server (token, toolsets, etc.)
