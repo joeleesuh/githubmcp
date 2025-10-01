@@ -1,9 +1,14 @@
 # --- build the GitHub MCP server (Go) ---
-FROM golang:1.22 AS build
+FROM golang:1.24 AS build
 WORKDIR /src
-# Pull source
-RUN git clone https://github.com/github/github-mcp-server . \
- && go build -o /out/github-mcp-server ./cmd/github-mcp-server
+
+# Use local workspace as build context rather than cloning upstream (avoids go version mismatch).
+COPY . .
+
+# Ensure modules, produce a static linux binary
+RUN go env -w GO111MODULE=on \
+ && go mod download \
+ && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/github-mcp-server ./cmd/github-mcp-server
 
 # --- minimal runtime with mcp-proxy exposing Streamable HTTP/SSE ---
 FROM python:3.12-slim
@@ -12,6 +17,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir mcp-proxy
 # Add server binary
 COPY --from=build /out/github-mcp-server /usr/local/bin/github-mcp-server
+RUN chmod +x /usr/local/bin/github-mcp-server
 
 # Health + basics
 EXPOSE 8080
